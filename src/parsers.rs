@@ -73,16 +73,3 @@ impl<S, T: Clone, P: Parser<ParseTree<T>, S>, Q: Parser<ParseTree<T>, S>> Parser
     }
 }
 
-impl<S, T: Clone, P: Parser<S,ParseTree<T>>, Q: Parser<S,ParseTree<T>>> Parser<S,ParseTree<T>> for ConcatParser<P, Q> {
-    fn parse<'a>(&self, state: &'a [S]) -> ParseResult<'a, S, ParseTree<T>> {
-        let mut p1_parse: Vec<(&'a [S], ParseTree<T>)> = self.p1.parse(state);
-
-        let mut out = vec!();
-        for (rem, tree) in p1_parse.move_iter() {
-            for (rem2, tree2) in self.p2.parse(rem).move_iter() {
-                out.push((rem2, Concat(box tree.clone(), box tree2)));
-            }
-        }
-        out
-    }
-}
