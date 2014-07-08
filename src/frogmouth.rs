@@ -3,10 +3,10 @@ use parsers::{SymParser, AltParser, ConcatParser};
 mod parsers;
 
 
-type ParseResult<'a, S, T> = Vec<(&'a [S], T)>;
+type ParseResult<'a, T, S> = Vec<(T, &'a [S])>;
 
-trait Parser<S,T> {
-    fn parse<'a>(&self, state: &'a [S]) -> ParseResult<'a, S, T>;
+trait Parser<T,S> {
+    fn parse<'a>(&self, state: &'a [S]) -> ParseResult<'a, T, S>;
 }
 
 #[deriving(Show)]
@@ -25,8 +25,6 @@ impl<T: Clone> Clone for ParseTree<T> {
         }
     }
 }
-
-
 
 
 fn main() {
