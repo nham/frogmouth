@@ -9,23 +9,6 @@ trait Parser<T,S> {
     fn parse<'a>(&self, state: &'a [S]) -> ParseResult<'a, T, S>;
 }
 
-#[deriving(Show)]
-enum ParseTree<T> {
-    Nil,
-    Leaf(T),
-    Concat(Box<ParseTree<T>>, Box<ParseTree<T>>),
-}
-
-impl<T: Clone> Clone for ParseTree<T> {
-    fn clone(&self) -> ParseTree<T> {
-        match *self {
-            Nil => Nil,
-            Leaf(ref v) => Leaf(v.clone()),
-            Concat(ref a, ref b) => Concat(a.clone(), b.clone()),
-        }
-    }
-}
-
 
 fn main() {
     let ap = SymParser::new('a');

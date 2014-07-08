@@ -1,5 +1,4 @@
-use super::{Parser, ParseResult, ParseTree, Leaf, Concat};
-
+use super::{Parser, ParseResult};
 
 pub struct SymParser {
     sym: char,
@@ -11,13 +10,13 @@ impl SymParser {
     }
 }
 
-impl Parser<ParseTree<char>, char> for SymParser {
-    fn parse<'a>(&self, state: &'a [char]) -> ParseResult<'a, ParseTree<char>, char> {
+impl Parser<Vec<char>, char> for SymParser {
+    fn parse<'a>(&self, state: &'a [char]) -> ParseResult<'a, Vec<char>, char> {
         match state.get(0) {
             None => vec!(),
             Some(sym) => {
                 if *sym == self.sym {
-                    vec!( (Leaf(self.sym), state.tailn(1)) )
+                    vec!( (vec!(self.sym), state.tailn(1)) )
                 } else {
                     vec!()
                 }
@@ -59,14 +58,16 @@ impl<P, Q> ConcatParser<P, Q> {
     }
 }
 
-impl<S, T: Clone, P: Parser<ParseTree<T>, S>, Q: Parser<ParseTree<T>, S>> Parser<ParseTree<T>, S> for ConcatParser<P, Q> {
-    fn parse<'a>(&self, state: &'a [S]) -> ParseResult<'a, ParseTree<T>, S> {
-        let mut p1_parse = self.p1.parse(state);
+impl<S, T: Clone, P: Parser<Vec<T>, S>, Q: Parser<Vec<T>, S>> Parser<Vec<T>, S> for ConcatParser<P, Q> {
+    fn parse<'a>(&self, state: &'a [S]) -> ParseResult<'a, Vec<T>, S> {
+        let p1_parse = self.p1.parse(state);
 
         let mut out = vec!();
         for (tree, rem) in p1_parse.move_iter() {
             for (tree2, rem2) in self.p2.parse(rem).move_iter() {
-                out.push( (Concat(box tree.clone(), box tree2), rem2) );
+                let mut newtree = tree.clone();
+                newtree.push_all_move(tree2);
+                out.push( (newtree, rem2) );
             }
         }
         out
