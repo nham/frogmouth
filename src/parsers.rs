@@ -1,5 +1,20 @@
 use super::{Parser, ParseResult};
 
+pub struct NilParser;
+
+impl NilParser {
+    pub fn new() -> NilParser {
+        NilParser
+    }
+}
+
+impl<S, T> Parser<Vec<T>, S> for NilParser {
+    fn parse<'a>(&self, state: &'a [S]) -> ParseResult<'a, Vec<T>, S> {
+        vec!( (vec!(), state) )
+    }
+}
+
+
 pub struct SymParser {
     sym: char,
 }
