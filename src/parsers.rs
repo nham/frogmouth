@@ -1,5 +1,10 @@
 use super::{Parser, ParseResult};
 
+fn apply_move<T>(mut v1: Vec<T>, v2: Vec<T>) -> Vec<T> {
+    v1.push_all_move(v2);
+    v1
+}
+
 pub struct NilParser;
 
 impl NilParser {
@@ -78,14 +83,11 @@ impl<S, T: Clone, P: Parser<Vec<T>, S>, Q: Parser<Vec<T>, S>> Parser<Vec<T>, S> 
         let p1_parse = self.p1.parse(state);
 
         let mut out = vec!();
-        for (tree, rem) in p1_parse.move_iter() {
-            for (tree2, rem2) in self.p2.parse(rem).move_iter() {
-                let mut newtree = tree.clone();
-                newtree.push_all_move(tree2);
-                out.push( (newtree, rem2) );
+        for (con, rem) in p1_parse.move_iter() {
+            for (con2, rem2) in self.p2.parse(rem).move_iter() {
+                out.push( (apply_move(con.clone(), con2), rem2) );
             }
         }
         out
     }
 }
-
