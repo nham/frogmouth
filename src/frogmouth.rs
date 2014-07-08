@@ -8,12 +8,12 @@ trait Parser<S,T> {
     fn parse<'a>(&self, state: &'a [S]) -> ParseResult<'a, S, T>;
 }
 
-struct altParser<P, Q> {
+struct AltParser<P, Q> {
     p1: P,
     p2: Q,
 }
 
-impl<S,T, P: Parser<S,T>, Q: Parser<S,T>> Parser<S,T> for altParser<P, Q> {
+impl<S,T, P: Parser<S,T>, Q: Parser<S,T>> Parser<S,T> for AltParser<P, Q> {
     fn parse<'a>(&self, state: &'a [S]) -> ParseResult<'a, S, T> {
         let p1_parse = self.p1.parse(state);
         if p1_parse.len() > 0 {
@@ -25,11 +25,11 @@ impl<S,T, P: Parser<S,T>, Q: Parser<S,T>> Parser<S,T> for altParser<P, Q> {
 }
 
 
-struct symParser {
+struct SymParser {
     sym: char,
 }
 
-impl Parser<char, Tree<char>> for symParser {
+impl Parser<char, Tree<char>> for SymParser {
     fn parse<'a>(&self, state: &'a [char]) -> ParseResult<'a, char, Tree<char>> {
         match state.get(0) {
             None => vec!(),
@@ -47,5 +47,23 @@ impl Parser<char, Tree<char>> for symParser {
 
 
 fn main() {
+    let ap = SymParser { sym: 'a' };
+    let bp = SymParser { sym: 'b' };
+
+    let stream1 = vec!('a', 'b', 'c', 'd');
+    let stream2 = vec!('b', 'b', 'c', 'd');
+
+    let res1 = ap.parse(stream1.as_slice());
+    println!("{}", res1);
+    let res2 = bp.parse(stream2.as_slice());
+    println!("{}", res2);
+    let res3 = ap.parse(stream2.as_slice());
+    println!("{}", res3);
+
+    let alt_ab = AltParser { p1: ap, p2: bp };
+
+    let res4 = alt_ab.parse(stream1.as_slice());
+    let res5 = alt_ab.parse(stream2.as_slice());
+    println!("{}\n{}", res4, res5);
 
 }
