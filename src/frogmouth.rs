@@ -1,7 +1,3 @@
-use tree::{Tree, Node};
-
-mod tree;
-
 type ParseResult<'a, S, T> = Vec<(&'a [S], T)>;
 
 trait Parser<S,T> {
@@ -15,12 +11,37 @@ struct AltParser<P, Q> {
 
 impl<S,T, P: Parser<S,T>, Q: Parser<S,T>> Parser<S,T> for AltParser<P, Q> {
     fn parse<'a>(&self, state: &'a [S]) -> ParseResult<'a, S, T> {
-        let p1_parse = self.p1.parse(state);
-        if p1_parse.len() > 0 {
-            p1_parse
-        } else {
-            self.p2.parse(state)
+        let mut p1_parse = self.p1.parse(state);
+        p1_parse.push_all_move( self.p2.parse(state) );
+        p1_parse
+    }
+}
+
+#[deriving(Show)]
+enum ParseTree<T> {
+    Nil,
+    Leaf(T),
+    Alt(Box<ParseTree<T>>, Box<ParseTree<T>>),
+    Concat(Box<ParseTree<T>>, Box<ParseTree<T>>),
+}
+
+struct ConcatParser<P, Q> {
+    p1: P,
+    p2: Q,
+}
+
+impl<S, T, P: Parser<S,ParseTree<T>>, Q: Parser<S,ParseTree<T>>> Parser<S,ParseTree<T>> for ConcatParser<P, Q> {
+    fn parse<'a>(&self, state: &'a [S]) -> ParseResult<'a, S, ParseTree<T>> {
+        let mut p1_parse = self.p1.parse(state);
+
+        let mut out = vec!();
+        for (rem, tree) in p1_parse.move_iter() {
+            for (rem2, tree2) in self.p2.parse(rem).move_iter() {
+                let boxtree = box tree;
+                out.push((rem2, Concat(boxtree, box tree2)));
+            }
         }
+        out
     }
 }
 
@@ -29,13 +50,13 @@ struct SymParser {
     sym: char,
 }
 
-impl Parser<char, Tree<char>> for SymParser {
-    fn parse<'a>(&self, state: &'a [char]) -> ParseResult<'a, char, Tree<char>> {
+impl Parser<char, ParseTree<char>> for SymParser {
+    fn parse<'a>(&self, state: &'a [char]) -> ParseResult<'a, char, ParseTree<char>> {
         match state.get(0) {
             None => vec!(),
             Some(sym) => {
                 if *sym == self.sym {
-                    vec!((state.tailn(1), Node(self.sym, vec!())))
+                    vec!((state.tailn(1), Leaf(self.sym)))
                 } else {
                     vec!()
                 }
