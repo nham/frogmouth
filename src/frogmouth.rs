@@ -20,43 +20,45 @@ fn print_iter<T: Show, I: Iterator<T>>(mut entries: I) {
     print!("]");
 }
 
+fn test_parse_input<'a, S: Show, I: Iterator<(Vec<S>, &'a [S])>, P: Parser<&'a [S], Vec<S>, I>>(p: P, inp: &'a [S]) {
+    let res = p.parse(inp);
+    print!("testing with input {} -- ", inp);
+    print_iter(res);
+    println!("");
+}
 
 
 fn main() {
     let ap = SymParser::new('a');
     let bp = SymParser::new('b');
     let cp = SymParser::new('c');
+    let dp = SymParser::new('d');
+
+    let alt_ab = AltParser::new(ap, bp);
+    let alt_cd = AltParser::new(cp, dp);
+
 
     let stream1 = vec!('a', 'b', 'c', 'd');
     let stream2 = vec!('b', 'b', 'c', 'd');
 
-    let res1 = ap.parse(stream1.as_slice());
-    print!("testing a: ");
-    print_iter(res1);
-    println!("")
+    println!("testing a: ");
+    test_parse_input(ap, stream1.as_slice());
 
-    let res2 = bp.parse(stream2.as_slice());
-    print!("testing b: ");
-    print_iter(res2);
-    println!("")
+    println!("testing b: ");
+    test_parse_input(bp, stream2.as_slice());
 
-    let res3 = ap.parse(stream2.as_slice());
-    print!("testing a again: ");
-    print_iter(res3);
-    println!("")
+    println!("testing a again: ");
+    test_parse_input(ap, stream2.as_slice());
 
-    let alt_ab = AltParser::new(ap, bp);
 
     let res4 = alt_ab.parse(stream1.as_slice());
     let res5 = alt_ab.parse(stream2.as_slice());
 
-    print!("testing alt: ");
-    print_iter(res4);
-    println!("");
+    println!("testing alt_ab: ");
+    test_parse_input(alt_ab, stream1.as_slice());
 
-    print!("testing alt again: ");
-    print_iter(res5);
-    println!("");
+    println!("testing alt_ab again: ");
+    test_parse_input(alt_ab, stream2.as_slice());
 
 
     let stream3 = vec!('a', 'c', 'd');
@@ -67,12 +69,43 @@ fn main() {
     let res6 = concat_alt_ab_c.parse(stream3.as_slice());
     let res7 = concat_alt_ab_c.parse(stream4.as_slice());
 
-    print!("testing concat: ");
-    print_iter(res6);
+    println!("testing concat: ");
+    test_parse_input(concat_alt_ab_c, stream3.as_slice());
+
+    println!("testing concat again: ");
+    test_parse_input(concat_alt_ab_c, stream4.as_slice());
+
+
+    let concat_alt_ab_alt_cd = ConcatParser::new(alt_ab, alt_cd);
+
+    let stream8 = vec!('a', 'c');
+    let stream9 = vec!('b', 'c');
+    let stream10 = vec!('a', 'd');
+    let stream11 = vec!('b', 'd');
+
+    let res8 = concat_alt_ab_alt_cd.parse(stream8.as_slice());
+    let res9 = concat_alt_ab_alt_cd.parse(stream9.as_slice());
+    let res10 = concat_alt_ab_alt_cd.parse(stream10.as_slice());
+    let res11 = concat_alt_ab_alt_cd.parse(stream11.as_slice());
+
+    println!("concatting two alt parsers:");
+    print_iter(res8);
+    println!("");
+    print_iter(res9);
+    println!("");
+    print_iter(res10);
+    println!("");
+    print_iter(res11);
     println!("");
 
-    print!("testing concat again: ");
-    print_iter(res7);
-    println!("");
+    println!("testing concat of abc: ");
+    let concat_abc = ConcatParser::new(ConcatParser::new(ap, bp), cp);
+    let stream12 = vec!('a', 'b', 'c', 'd', 'e');
+    test_parse_input(concat_abc, stream12.as_slice());
+
+    println!("testing concat of abcabc: ");
+    let concat_abc = ConcatParser::new(concat_abc, concat_abc);
+    let stream13 = vec!('a', 'b', 'c', 'a', 'b', 'c', 'd', 'e');
+    test_parse_input(concat_abc, stream13.as_slice());
 
 }
