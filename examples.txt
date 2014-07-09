@@ -7,3 +7,4 @@ Ideas for examples:
  - HTTP messages?
  - IMAP parser
  - Markdown
+ - docopt
