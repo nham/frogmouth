@@ -43,13 +43,6 @@ impl<T, S, I, J: Iterator<T>, P> ConcatResultIter<S, I, J, P> {
     }
 }
 
-/*
-impl<S, I: Iterator<(Vec<S>, _)>, 
-        J: Iterator<(Vec<S>, _)>, P> ConcatResultIter<S, I, J, P> {
-    fn append_init_parsed(&self,
-}
-*/
-
 
 impl<'a, S: Clone, 
          I: ResultIter<Vec<S>, &'a [S]>, 
@@ -117,6 +110,7 @@ for NilParser {
 }
 
 
+#[deriving(Clone)]
 pub struct SymParser<S> {
     sym: S,
 }
@@ -183,16 +177,15 @@ impl<P, Q> ConcatParser<P, Q> {
 }
 
 
-/*
 impl<'a, S: Hash + Eq + Clone, 
          I: ResultIter<Vec<S>, &'a [S]>,
          J: ResultIter<Vec<S>, &'a [S]>,
          P: Parser<&'a [S], Vec<S>, I>,
-         Q: Parser<&'a [S], Vec<S>, J>> 
+         Q: Parser<&'a [S], Vec<S>, J> + Clone> 
     Parser<&'a [S], Vec<S>, ConcatResultIter<S, I, J, Q>> for ConcatParser<P, Q> {
     fn parse(&self, state: &'a [S]) -> ConcatResultIter<S, I, J, Q> {
-        let p1_parse = self.p1.parse(state);
+        let mut it = self.p1.parse(state);
+        ConcatResultIter { iter: it, p: self.p2.clone(), init_parsed: vec!(), iter2: None }
 
     }
 }
-*/

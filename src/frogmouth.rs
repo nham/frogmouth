@@ -8,11 +8,11 @@ mod parsers;
 // S is a stream of input symbols, T is some type representing parsed input
 // I is an iterator that represents the possible matches
 trait Parser<S, T, I: Iterator<(T, S)>> {
-    fn parse<'a>(&self, state: S) -> I;
+    fn parse(&self, state: S) -> I;
 }
 
 
-fn print_iter<'a, T: Show, I: Iterator<T>>(mut entries: I) {
+fn print_iter<T: Show, I: Iterator<T>>(mut entries: I) {
     print!("[");
     for e in entries {
         print!("{} ", e);
@@ -29,9 +29,6 @@ fn main() {
 
     let stream1 = vec!('a', 'b', 'c', 'd');
     let stream2 = vec!('b', 'b', 'c', 'd');
-
-    let stream3 = vec!('a', 'c', 'd');
-    let stream4 = vec!('b', 'c', 'd');
 
     let res1 = ap.parse(stream1.as_slice());
     print!("testing a: ");
@@ -62,12 +59,20 @@ fn main() {
     println!("");
 
 
-    /*
+    let stream3 = vec!('a', 'c', 'd');
+    let stream4 = vec!('b', 'c', 'd');
+
     let concat_alt_ab_c = ConcatParser::new(alt_ab, cp);
 
     let res6 = concat_alt_ab_c.parse(stream3.as_slice());
     let res7 = concat_alt_ab_c.parse(stream4.as_slice());
-    println!("testing concat: {}\n{}", res6, res7);
-    */
+
+    print!("testing concat: ");
+    print_iter(res6);
+    println!("");
+
+    print!("testing concat again: ");
+    print_iter(res7);
+    println!("");
 
 }
