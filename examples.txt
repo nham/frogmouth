@@ -1,0 +1,9 @@
+Ideas for examples:
+
+ - regular expressions
+ - JSON
+ - arithmetic expressions
+ - ur-lisp
+ - HTTP messages?
+ - IMAP parser
+ - Markdown
