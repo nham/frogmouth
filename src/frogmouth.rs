@@ -50,10 +50,6 @@ fn main() {
     println!("testing a again: ");
     test_parse_input(ap, stream2.as_slice());
 
-
-    let res4 = alt_ab.parse(stream1.as_slice());
-    let res5 = alt_ab.parse(stream2.as_slice());
-
     println!("testing alt_ab: ");
     test_parse_input(alt_ab, stream1.as_slice());
 
@@ -65,9 +61,6 @@ fn main() {
     let stream4 = vec!('b', 'c', 'd');
 
     let concat_alt_ab_c = ConcatParser::new(alt_ab, cp);
-
-    let res6 = concat_alt_ab_c.parse(stream3.as_slice());
-    let res7 = concat_alt_ab_c.parse(stream4.as_slice());
 
     println!("testing concat: ");
     test_parse_input(concat_alt_ab_c, stream3.as_slice());
