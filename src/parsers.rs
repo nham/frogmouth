@@ -141,6 +141,7 @@ for SymParser<S> {
 }
 
 
+#[deriving(Clone)]
 pub struct AltParser<P, Q> {
     p1: P,
     p2: Q,
@@ -165,6 +166,7 @@ impl<'a, S: Hash + Eq,
 }
 
 
+#[deriving(Clone)]
 pub struct ConcatParser<P, Q> {
     p1: P,
     p2: Q,
