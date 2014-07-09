@@ -179,6 +179,10 @@ impl<P, Q> ConcatParser<P, Q> {
 }
 
 
+// This is a bad because we require Q to implement Clone. I think ideally
+// ConcatResultIter should only hold a reference to a Parser. However, that
+// means it has to take a lifetime parameter, so far I've been unable to make
+// the borrow checker agree with what I've written.
 impl<'a, S: Hash + Eq + Clone, 
          I: ResultIter<Vec<S>, &'a [S]>,
          J: ResultIter<Vec<S>, &'a [S]>,
