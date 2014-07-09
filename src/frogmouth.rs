@@ -1,3 +1,6 @@
+pub use std::collections::hashmap::{HashMap, MoveEntries};
+use std::fmt::Show;
+
 use parsers::{SymParser, AltParser, ConcatParser};
 
 mod parsers;
@@ -7,12 +10,21 @@ trait Parser<S, T, I: Iterator<(T, S)>> {
 }
 
 
+fn print_entries<'a, A: Show, B: Show>(mut entries: MoveEntries<A, B>) {
+    print!("[");
+    for e in entries {
+        print!("{} ", e);
+    }
+    println!("]");
+}
+
+
+
 fn main() {
     let ap = SymParser::new('a');
     let bp = SymParser::new('b');
     let cp = SymParser::new('c');
 
-    /*
     let stream1 = vec!('a', 'b', 'c', 'd');
     let stream2 = vec!('b', 'b', 'c', 'd');
 
@@ -20,12 +32,18 @@ fn main() {
     let stream4 = vec!('b', 'c', 'd');
 
     let res1 = ap.parse(stream1.as_slice());
-    println!("testing a: {}", res1);
-    let res2 = bp.parse(stream2.as_slice());
-    println!("testing b: {}", res2);
-    let res3 = ap.parse(stream2.as_slice());
-    println!("testing a again: {}", res3);
+    print!("testing a: ");
+    print_entries(res1);
 
+    let res2 = bp.parse(stream2.as_slice());
+    print!("testing b: ");
+    print_entries(res2);
+
+    let res3 = ap.parse(stream2.as_slice());
+    print!("testing a again: ");
+    print_entries(res3);
+
+    /*
     let alt_ab = AltParser::new(ap, bp);
 
     let res4 = alt_ab.parse(stream1.as_slice());

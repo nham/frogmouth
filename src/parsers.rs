@@ -1,9 +1,6 @@
-use super::{Parser};
-use std::collections::hashmap::{HashMap, MoveEntries};
+use super::{HashMap, MoveEntries, Parser};
 use std::hash::Hash;
 use std::iter::Chain;
-
-type ParseResult<'a, S> = (Vec<S>, &'a [S]);
 
 type StdResultIter<'a, S> = MoveEntries<Vec<S>, &'a [S]>;
 
