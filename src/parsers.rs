@@ -1,9 +1,27 @@
-use super::{Parser, ParseResult};
+use super::{Parser};
+use std::collections::hashmap::{HashMap, MoveEntries};
+use std::hash::Hash;
+use std::iter::Chain;
+
+type ParseResult<'a, S> = (Vec<S>, &'a [S]);
+
+type StdResultIter<'a, S> = MoveEntries<Vec<S>, &'a [S]>;
 
 fn apply_move<T>(mut v1: Vec<T>, v2: Vec<T>) -> Vec<T> {
     v1.push_all_move(v2);
     v1
 }
+
+trait ResultIter<A,B>: Iterator<(A,B)> {}
+
+
+impl<'a, S> ResultIter<Vec<S>, &'a [S]> for StdResultIter<'a, S> {}
+impl<'a, S> ResultIter<Vec<S>, &'a [S]> 
+    for Chain<StdResultIter<'a, S>, StdResultIter<'a, S>> {}
+
+
+/****************************/
+
 
 pub struct NilParser;
 
@@ -13,32 +31,38 @@ impl NilParser {
     }
 }
 
-impl<S, T> Parser<Vec<T>, S> for NilParser {
-    fn parse<'a>(&self, state: &'a [S]) -> ParseResult<'a, Vec<T>, S> {
-        vec!( (vec!(), state) )
+impl<'a, S: Hash + Eq> Parser<&'a [S], Vec<S>, StdResultIter<'a, S>> 
+for NilParser {
+    fn parse<'a>(&self, state: &'a [S]) -> StdResultIter<'a, S> {
+        let mut hm = HashMap::new();
+        hm.insert(vec!(), state);
+        hm.move_iter()
     }
 }
 
 
-pub struct SymParser {
-    sym: char,
+pub struct SymParser<S> {
+    sym: S,
 }
 
-impl SymParser {
-    pub fn new(c: char) -> SymParser {
+impl<S> SymParser<S> {
+    pub fn new(c: S) -> SymParser<S> {
         SymParser { sym: c }
     }
 }
 
-impl Parser<Vec<char>, char> for SymParser {
-    fn parse<'a>(&self, state: &'a [char]) -> ParseResult<'a, Vec<char>, char> {
+impl<'a, S: Hash + Eq + Clone> Parser<&'a [S], Vec<S>, StdResultIter<'a, S>> 
+for SymParser<S> {
+    fn parse(&self, state: &'a [S]) -> StdResultIter<'a, S> {
         match state.get(0) {
-            None => vec!(),
+            None => HashMap::new().move_iter(),
             Some(sym) => {
                 if *sym == self.sym {
-                    vec!( (vec!(self.sym), state.tailn(1)) )
+                    let mut hm = HashMap::new();
+                    hm.insert(vec!( self.sym.clone() ), state.tailn(1));
+                    hm.move_iter()
                 } else {
-                    vec!()
+                    HashMap::new().move_iter()
                 }
             },
         }
@@ -58,11 +82,15 @@ impl<P, Q> AltParser<P, Q> {
     }
 }
 
-impl<S,T, P: Parser<T,S>, Q: Parser<T,S>> Parser<T,S> for AltParser<P, Q> {
-    fn parse<'a>(&self, state: &'a [S]) -> ParseResult<'a, T, S> {
-        let mut p1_parse = self.p1.parse(state);
-        p1_parse.push_all_move( self.p2.parse(state) );
-        p1_parse
+
+impl<'a, S: Hash + Eq, 
+         I: ResultIter<Vec<S>, &'a [S]>,
+         J: ResultIter<Vec<S>, &'a [S]>,
+         P: Parser<&'a [S], Vec<S>, I>,
+         Q: Parser<&'a [S], Vec<S>, J>> 
+    Parser<&'a [S], Vec<S>, Chain<I, J>> for AltParser<P, Q> {
+    fn parse(&self, state: &'a [S]) -> Chain<I, J> {
+        self.p1.parse(state).chain(self.p2.parse(state))
     }
 }
 
@@ -78,8 +106,13 @@ impl<P, Q> ConcatParser<P, Q> {
     }
 }
 
-impl<S, T: Clone, P: Parser<Vec<T>, S>, Q: Parser<Vec<T>, S>> Parser<Vec<T>, S> for ConcatParser<P, Q> {
-    fn parse<'a>(&self, state: &'a [S]) -> ParseResult<'a, Vec<T>, S> {
+
+/*
+impl<'a, S: Hash + Eq, 
+         P: Parser<&'a [S], Vec<S>, ResultIter<'a, S>>,
+         Q: Parser<&'a [S], Vec<S>, ResultIter<'a, S>>> 
+    Parser<&'a [S], Vec<S>, ResultIter<'a, S>> for ConcatParser<P, Q> {
+    fn parse(&self, state: &'a [S]) -> ResultIter<'a, S> {
         let p1_parse = self.p1.parse(state);
 
         let mut out = vec!();
@@ -91,3 +124,4 @@ impl<S, T: Clone, P: Parser<Vec<T>, S>, Q: Parser<Vec<T>, S>> Parser<Vec<T>, S> 
         out
     }
 }
+*/

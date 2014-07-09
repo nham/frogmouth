@@ -2,11 +2,8 @@ use parsers::{SymParser, AltParser, ConcatParser};
 
 mod parsers;
 
-
-type ParseResult<'a, T, S> = Vec<(T, &'a [S])>;
-
-trait Parser<T,S> {
-    fn parse<'a>(&self, state: &'a [S]) -> ParseResult<'a, T, S>;
+trait Parser<S, T, I: Iterator<(T, S)>> {
+    fn parse<'a>(&self, state: S) -> I;
 }
 
 
@@ -15,6 +12,7 @@ fn main() {
     let bp = SymParser::new('b');
     let cp = SymParser::new('c');
 
+    /*
     let stream1 = vec!('a', 'b', 'c', 'd');
     let stream2 = vec!('b', 'b', 'c', 'd');
 
@@ -39,5 +37,6 @@ fn main() {
     let res6 = concat_alt_ab_c.parse(stream3.as_slice());
     let res7 = concat_alt_ab_c.parse(stream4.as_slice());
     println!("testing concat: {}\n{}", res6, res7);
+    */
 
 }
