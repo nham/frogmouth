@@ -10,12 +10,12 @@ trait Parser<S, T, I: Iterator<(T, S)>> {
 }
 
 
-fn print_entries<'a, A: Show, B: Show>(mut entries: MoveEntries<A, B>) {
+fn print_iter<'a, T: Show, I: Iterator<T>>(mut entries: I) {
     print!("[");
     for e in entries {
         print!("{} ", e);
     }
-    println!("]");
+    print!("]");
 }
 
 
@@ -33,23 +33,34 @@ fn main() {
 
     let res1 = ap.parse(stream1.as_slice());
     print!("testing a: ");
-    print_entries(res1);
+    print_iter(res1);
+    println!("")
 
     let res2 = bp.parse(stream2.as_slice());
     print!("testing b: ");
-    print_entries(res2);
+    print_iter(res2);
+    println!("")
 
     let res3 = ap.parse(stream2.as_slice());
     print!("testing a again: ");
-    print_entries(res3);
+    print_iter(res3);
+    println!("")
 
-    /*
     let alt_ab = AltParser::new(ap, bp);
 
     let res4 = alt_ab.parse(stream1.as_slice());
     let res5 = alt_ab.parse(stream2.as_slice());
-    println!("testing alt: {}\n{}", res4, res5);
 
+    print!("testing alt: ");
+    print_iter(res4);
+    println!("");
+
+    print!("testing alt again: ");
+    print_iter(res5);
+    println!("");
+
+
+    /*
     let concat_alt_ab_c = ConcatParser::new(alt_ab, cp);
 
     let res6 = concat_alt_ab_c.parse(stream3.as_slice());
