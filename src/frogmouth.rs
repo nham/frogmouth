@@ -5,6 +5,8 @@ use parsers::{SymParser, AltParser, ConcatParser};
 
 mod parsers;
 
+// S is a stream of input symbols, T is some type representing parsed input
+// I is an iterator that represents the possible matches
 trait Parser<S, T, I: Iterator<(T, S)>> {
     fn parse<'a>(&self, state: S) -> I;
 }

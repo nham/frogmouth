@@ -9,12 +9,14 @@ fn apply_move<T>(mut v1: Vec<T>, v2: Vec<T>) -> Vec<T> {
     v1
 }
 
+// Essentially a dummy trait to unify the different varieties
+// of iterators that I use
 trait ResultIter<A,B>: Iterator<(A,B)> {}
-
 
 impl<'a, S> ResultIter<Vec<S>, &'a [S]> for StdResultIter<'a, S> {}
 impl<'a, S> ResultIter<Vec<S>, &'a [S]> 
-    for Chain<StdResultIter<'a, S>, StdResultIter<'a, S>> {}
+for Chain<StdResultIter<'a, S>, StdResultIter<'a, S>> {}
+
 
 
 /****************************/
