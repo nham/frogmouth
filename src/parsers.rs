@@ -67,7 +67,7 @@ for ConcatResultIter<S, I, J, P> {
             None => None, // nothing in self.iter either, bail
             Some((parsed, rem)) => {
                 self.init_parsed = parsed;
-                let mut new_iter = self.p.parse(rem);
+                let new_iter = self.p.parse(rem);
                 self.iter2 = Some(new_iter);
 
                 match self.next_iter2() {
@@ -154,7 +154,7 @@ impl<P, Q> AltParser<P, Q> {
 }
 
 
-impl<'a, S: Hash + Eq, 
+impl<'a, S, 
          I: ResultIter<Vec<S>, &'a [S]>,
          J: ResultIter<Vec<S>, &'a [S]>,
          P: SimpleParser<'a, S, I>,
@@ -183,7 +183,7 @@ impl<P, Q> ConcatParser<P, Q> {
 // ConcatResultIter should only hold a reference to a Parser. However, that
 // means it has to take a lifetime parameter, so far I've been unable to make
 // the borrow checker agree with what I've written.
-impl<'a, S: Hash + Eq + Clone, 
+impl<'a, S: Clone, 
          I: ResultIter<Vec<S>, &'a [S]>,
          J: ResultIter<Vec<S>, &'a [S]>,
          P: Parser<&'a [S], Vec<S>, I>,
