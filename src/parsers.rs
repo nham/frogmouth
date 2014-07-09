@@ -2,6 +2,11 @@ use super::{HashMap, MoveEntries, Parser};
 use std::hash::Hash;
 use std::iter::Chain;
 
+fn append_move<T>(mut v1: Vec<T>, v2: Vec<T>) -> Vec<T> {
+    v1.push_all_move(v2);
+    v1
+}
+
 // Parser where the input stream type is a slice of S's, and the 
 // "parsed" representation is a vector of S's
 trait SimpleParser<'a, S, I>: Parser<&'a [S], Vec<S>, I> {}
@@ -26,58 +31,68 @@ struct ConcatResultIter<S, I, J, P> {
     iter: I,
     p: P,
     init_parsed: Vec<S>, // the parsed vector after initial parse
-    p_iter: Option<J>, // the iterator from second parse
+    iter2: Option<J>, // the iterator from second parse
 }
 
-impl<S, I, J, P> ConcatResultIter<S, I, J, P> {
-    fn append_init_parsed(&self,
-}
-
-
-fn blarg(vec: &Vec<S>, mut tup: (Vec<S>, &'a [S])) -> (Vec<S>, &'a [S]) {
-    let (consumed, remaining) = tup;
-    let newvec = vec.clone();
-    newvec.push_all_move(consumed);
-    (newvec, remaining)
-}
-
-impl<'a, S, I: ResultIter<Vec<S>, &'a [S]>, 
-            J: ResultIter<Vec<S>, &'a [S]>,
-            P: SimpleParser<'a, S, J>>
-Iterator<(Vec<S>, &'a [S])>
-for ConcatResultIter<S, I, J, P> {
-    fn next(&mut self) -> Option<(Vec<S>, &'a [S])> {
-        let p_iter_next = self.p_iter;
-
-        let new_iter: J;
-
-        if self.p_iter.is_some() {
-            new_iter = self.p_iter.unwrap().next
-        }
-
-        if self.p_iter.is_none() || self.p_iter.unwrap().ne{
-            match self.iter.next() {
-                None => None,
-                Some((parsed, rem)) => {
-                    self.init_parsed = parsed;
-                    let new_iter = self.p.parse(rem);
-                    self.p_iter = Some(new_iter);
-
-                    match self.p_iter.next()
-                        None => None,
-                        Some((parsed2, rem2)) => None,
-                    }
-                }
-            }
-        } else {
-            p_iter_next.unwrap()
+impl<T, S, I, J: Iterator<T>, P> ConcatResultIter<S, I, J, P> {
+    fn next_iter2(&mut self) -> Option<T> {
+        match self.iter2 {
+            None => None,
+            Some(ref mut it) => it.next(),
         }
     }
 }
 
-impl<'a, S, I: ResultIter<Vec<S>, &'a [S]>, 
-            J: ResultIter<Vec<S>, &'a [S]>,
-            P: SimpleParser<'a, S, J>> 
+/*
+impl<S, I: Iterator<(Vec<S>, _)>, 
+        J: Iterator<(Vec<S>, _)>, P> ConcatResultIter<S, I, J, P> {
+    fn append_init_parsed(&self,
+}
+*/
+
+
+impl<'a, S: Clone, 
+         I: ResultIter<Vec<S>, &'a [S]>, 
+         J: ResultIter<Vec<S>, &'a [S]>,
+         P: SimpleParser<'a, S, J>>
+Iterator<(Vec<S>, &'a [S])>
+for ConcatResultIter<S, I, J, P> {
+    fn next(&mut self) -> Option<(Vec<S>, &'a [S])> {
+        if self.iter2.is_some() {
+            let next_iter2 = self.next_iter2();
+            match next_iter2 {
+                Some(x) => {
+                    // TODO
+                    return None;
+                },
+                None => {},
+            }
+        }
+
+        // If we make it here we need to try to get a non-exhausted iter2.
+        match self.iter.next() {
+            None => None, // nothing in self.iter either, bail
+            Some((parsed, rem)) => {
+                self.init_parsed = parsed;
+                let mut new_iter = self.p.parse(rem);
+                self.iter2 = Some(new_iter);
+
+                match self.next_iter2() {
+                    None => None,
+                    Some((parsed2, rem2)) => {
+                        Some((append_move( self.init_parsed.clone(), parsed2 ),
+                              rem2))
+                    },
+                }
+            }
+        }
+    }
+}
+
+impl<'a, S: Clone, 
+         I: ResultIter<Vec<S>, &'a [S]>, 
+         J: ResultIter<Vec<S>, &'a [S]>,
+         P: SimpleParser<'a, S, J>> 
     ResultIter<Vec<S>, &'a [S]> for ConcatResultIter<S, I, J, P> {}
 
 
@@ -92,7 +107,7 @@ impl NilParser {
     }
 }
 
-impl<'a, S: Hash + Eq> Parser<&'a S, Vec<S>, StdResultIter<'a, S>> 
+impl<'a, S: Hash + Eq> Parser<&'a [S], Vec<S>, StdResultIter<'a, S>> 
 for NilParser {
     fn parse<'a>(&self, state: &'a [S]) -> StdResultIter<'a, S> {
         let mut hm = HashMap::new();
@@ -168,7 +183,8 @@ impl<P, Q> ConcatParser<P, Q> {
 }
 
 
-impl<'a, S: Hash + Eq, 
+/*
+impl<'a, S: Hash + Eq + Clone, 
          I: ResultIter<Vec<S>, &'a [S]>,
          J: ResultIter<Vec<S>, &'a [S]>,
          P: Parser<&'a [S], Vec<S>, I>,
@@ -179,3 +195,4 @@ impl<'a, S: Hash + Eq,
 
     }
 }
+*/
