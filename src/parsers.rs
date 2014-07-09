@@ -2,12 +2,15 @@ use super::{HashMap, MoveEntries, Parser};
 use std::hash::Hash;
 use std::iter::Chain;
 
+// Parser where the input stream type is a slice of S's, and the 
+// "parsed" representation is a vector of S's
+trait SimpleParser<'a, S, I>: Parser<&'a [S], Vec<S>, I> {}
+
+impl<'a, S, I, P: Parser<&'a [S], Vec<S>, I>> 
+    SimpleParser<'a, S, I> for P {}
+
 type StdResultIter<'a, S> = MoveEntries<Vec<S>, &'a [S]>;
 
-fn apply_move<T>(mut v1: Vec<T>, v2: Vec<T>) -> Vec<T> {
-    v1.push_all_move(v2);
-    v1
-}
 
 // Essentially a dummy trait to unify the different varieties
 // of iterators that I use
@@ -17,6 +20,65 @@ impl<'a, S> ResultIter<Vec<S>, &'a [S]> for StdResultIter<'a, S> {}
 impl<'a, S> ResultIter<Vec<S>, &'a [S]> 
 for Chain<StdResultIter<'a, S>, StdResultIter<'a, S>> {}
 
+
+// The idea is that I is an iterator and P is a parser.
+struct ConcatResultIter<S, I, J, P> {
+    iter: I,
+    p: P,
+    init_parsed: Vec<S>, // the parsed vector after initial parse
+    p_iter: Option<J>, // the iterator from second parse
+}
+
+impl<S, I, J, P> ConcatResultIter<S, I, J, P> {
+    fn append_init_parsed(&self,
+}
+
+
+fn blarg(vec: &Vec<S>, mut tup: (Vec<S>, &'a [S])) -> (Vec<S>, &'a [S]) {
+    let (consumed, remaining) = tup;
+    let newvec = vec.clone();
+    newvec.push_all_move(consumed);
+    (newvec, remaining)
+}
+
+impl<'a, S, I: ResultIter<Vec<S>, &'a [S]>, 
+            J: ResultIter<Vec<S>, &'a [S]>,
+            P: SimpleParser<'a, S, J>>
+Iterator<(Vec<S>, &'a [S])>
+for ConcatResultIter<S, I, J, P> {
+    fn next(&mut self) -> Option<(Vec<S>, &'a [S])> {
+        let p_iter_next = self.p_iter;
+
+        let new_iter: J;
+
+        if self.p_iter.is_some() {
+            new_iter = self.p_iter.unwrap().next
+        }
+
+        if self.p_iter.is_none() || self.p_iter.unwrap().ne{
+            match self.iter.next() {
+                None => None,
+                Some((parsed, rem)) => {
+                    self.init_parsed = parsed;
+                    let new_iter = self.p.parse(rem);
+                    self.p_iter = Some(new_iter);
+
+                    match self.p_iter.next()
+                        None => None,
+                        Some((parsed2, rem2)) => None,
+                    }
+                }
+            }
+        } else {
+            p_iter_next.unwrap()
+        }
+    }
+}
+
+impl<'a, S, I: ResultIter<Vec<S>, &'a [S]>, 
+            J: ResultIter<Vec<S>, &'a [S]>,
+            P: SimpleParser<'a, S, J>> 
+    ResultIter<Vec<S>, &'a [S]> for ConcatResultIter<S, I, J, P> {}
 
 
 /****************************/
@@ -30,7 +92,7 @@ impl NilParser {
     }
 }
 
-impl<'a, S: Hash + Eq> Parser<&'a [S], Vec<S>, StdResultIter<'a, S>> 
+impl<'a, S: Hash + Eq> Parser<&'a S, Vec<S>, StdResultIter<'a, S>> 
 for NilParser {
     fn parse<'a>(&self, state: &'a [S]) -> StdResultIter<'a, S> {
         let mut hm = HashMap::new();
@@ -85,8 +147,8 @@ impl<P, Q> AltParser<P, Q> {
 impl<'a, S: Hash + Eq, 
          I: ResultIter<Vec<S>, &'a [S]>,
          J: ResultIter<Vec<S>, &'a [S]>,
-         P: Parser<&'a [S], Vec<S>, I>,
-         Q: Parser<&'a [S], Vec<S>, J>> 
+         P: SimpleParser<'a, S, I>,
+         Q: SimpleParser<'a, S, J>> 
     Parser<&'a [S], Vec<S>, Chain<I, J>> for AltParser<P, Q> {
     fn parse(&self, state: &'a [S]) -> Chain<I, J> {
         self.p1.parse(state).chain(self.p2.parse(state))
@@ -106,21 +168,14 @@ impl<P, Q> ConcatParser<P, Q> {
 }
 
 
-/*
 impl<'a, S: Hash + Eq, 
-         P: Parser<&'a [S], Vec<S>, ResultIter<'a, S>>,
-         Q: Parser<&'a [S], Vec<S>, ResultIter<'a, S>>> 
-    Parser<&'a [S], Vec<S>, ResultIter<'a, S>> for ConcatParser<P, Q> {
-    fn parse(&self, state: &'a [S]) -> ResultIter<'a, S> {
+         I: ResultIter<Vec<S>, &'a [S]>,
+         J: ResultIter<Vec<S>, &'a [S]>,
+         P: Parser<&'a [S], Vec<S>, I>,
+         Q: Parser<&'a [S], Vec<S>, J>> 
+    Parser<&'a [S], Vec<S>, ConcatResultIter<S, I, J, Q>> for ConcatParser<P, Q> {
+    fn parse(&self, state: &'a [S]) -> ConcatResultIter<S, I, J, Q> {
         let p1_parse = self.p1.parse(state);
 
-        let mut out = vec!();
-        for (con, rem) in p1_parse.move_iter() {
-            for (con2, rem2) in self.p2.parse(rem).move_iter() {
-                out.push( (apply_move(con.clone(), con2), rem2) );
-            }
-        }
-        out
     }
 }
-*/
