@@ -101,21 +101,23 @@ fn main() {
     print_iter(res11);
     println!("");
 
+
+    let stream12 = vec!('a', 'b', 'c', 'd', 'e');
+    let stream13 = vec!('a', 'b', 'c', 'a', 'b', 'c', 'd', 'e');
+
     println!("testing concat of abc: ");
     let concat_abc = ConcatParser::new(ConcatParser::new(ap, bp), cp);
-    let stream12 = vec!('a', 'b', 'c', 'd', 'e');
     test_parse_input(concat_abc, stream12.as_slice());
 
     println!("testing concat of abcabc: ");
     let concat_abc = ConcatParser::new(concat_abc, concat_abc);
-    let stream13 = vec!('a', 'b', 'c', 'a', 'b', 'c', 'd', 'e');
     test_parse_input(concat_abc, stream13.as_slice());
 
 
     println!("testing concat of ab?c: ");
-    let bqp = OptionalParser::new(bp);
-    let concat_abqc = ConcatParser::new(ap, ConcatParser::new(bqp, cp));
+    //let concat_a_opt_b_c = ConcatParser::new(ap, ConcatParser::new(bqp, cp));
+    let concat_a_opt_b_c = ConcatParser::new(concat_a_opt_b, cp);
     let stream14 = vec!('a', 'c', 'd', 'e');
-    test_parse_input(concat_abqc, stream12.as_slice());
-    test_parse_input(concat_abqc, stream14.as_slice());
+    test_parse_input(concat_a_opt_b_c, stream12.as_slice());
+    test_parse_input(concat_a_opt_b_c, stream14.as_slice());
 }
