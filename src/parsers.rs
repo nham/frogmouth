@@ -23,7 +23,29 @@ trait ResultIter<A,B>: Iterator<(A,B)> {}
 
 impl<'a, S> ResultIter<Vec<S>, &'a [S]> for StdResultIter<'a, S> {}
 impl<'a, S> ResultIter<Vec<S>, &'a [S]> 
-for Chain<StdResultIter<'a, S>, StdResultIter<'a, S>> {}
+for AltResultIter<StdResultIter<'a, S>, StdResultIter<'a, S>> {}
+
+impl<'a, S: Clone, 
+         I: ResultIter<Vec<S>, &'a [S]>, 
+         J: ResultIter<Vec<S>, &'a [S]>,
+         P: SimpleParser<'a, S, J>> 
+    ResultIter<Vec<S>, &'a [S]> for ConcatResultIter<S, I, J, P> {}
+
+
+struct AltResultIter<I, J> {
+    chain: Chain<I, J>,
+}
+
+impl<'a, S, 
+         I: ResultIter<Vec<S>, &'a [S]>, 
+         J: ResultIter<Vec<S>, &'a [S]>>
+Iterator<(Vec<S>, &'a [S])>
+for AltResultIter<I, J> {
+    fn next(&mut self) -> Option<(Vec<S>, &'a [S])> {
+        self.chain.next()
+    }
+}
+
 
 
 // The idea is that I is an iterator and P is a parser.
@@ -82,11 +104,6 @@ for ConcatResultIter<S, I, J, P> {
     }
 }
 
-impl<'a, S: Clone, 
-         I: ResultIter<Vec<S>, &'a [S]>, 
-         J: ResultIter<Vec<S>, &'a [S]>,
-         P: SimpleParser<'a, S, J>> 
-    ResultIter<Vec<S>, &'a [S]> for ConcatResultIter<S, I, J, P> {}
 
 
 /****************************/
@@ -159,9 +176,9 @@ impl<'a, S,
          J: ResultIter<Vec<S>, &'a [S]>,
          P: SimpleParser<'a, S, I>,
          Q: SimpleParser<'a, S, J>> 
-    Parser<&'a [S], Vec<S>, Chain<I, J>> for AltParser<P, Q> {
-    fn parse(&self, state: &'a [S]) -> Chain<I, J> {
-        self.p1.parse(state).chain(self.p2.parse(state))
+    Parser<&'a [S], Vec<S>, AltResultIter<I, J>> for AltParser<P, Q> {
+    fn parse(&self, state: &'a [S]) -> AltResultIter<I, J> {
+        AltResultIter { chain: self.p1.parse(state).chain(self.p2.parse(state)) }
     }
 }
 
