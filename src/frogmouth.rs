@@ -1,7 +1,7 @@
 pub use std::collections::hashmap::{HashMap, MoveEntries};
 use std::fmt::Show;
 
-use parsers::{SymParser, AltParser, ConcatParser};
+use parsers::{SymParser, AltParser, ConcatParser, OptionalParser};
 
 mod parsers;
 
@@ -37,6 +37,8 @@ fn main() {
     let alt_ab = AltParser::new(ap, bp);
     let alt_cd = AltParser::new(cp, dp);
 
+    let opt_b = OptionalParser::new(bp);
+
 
     let stream1 = vec!('a', 'b', 'c', 'd');
     let stream2 = vec!('b', 'b', 'c', 'd');
@@ -55,6 +57,14 @@ fn main() {
 
     println!("testing alt_ab again: ");
     test_parse_input(alt_ab, stream2.as_slice());
+
+    println!("testing opt_b: ");
+    test_parse_input(opt_b, stream1.as_slice());
+    test_parse_input(opt_b, stream2.as_slice());
+
+    println!("testing a ++ opt_b: ");
+    let concat_a_opt_b = ConcatParser::new(ap, opt_b);
+    test_parse_input(concat_a_opt_b, stream1.as_slice());
 
 
     let stream3 = vec!('a', 'c', 'd');
@@ -101,4 +111,11 @@ fn main() {
     let stream13 = vec!('a', 'b', 'c', 'a', 'b', 'c', 'd', 'e');
     test_parse_input(concat_abc, stream13.as_slice());
 
+
+    println!("testing concat of ab?c: ");
+    let bqp = OptionalParser::new(bp);
+    let concat_abqc = ConcatParser::new(ap, ConcatParser::new(bqp, cp));
+    let stream14 = vec!('a', 'c', 'd', 'e');
+    test_parse_input(concat_abqc, stream12.as_slice());
+    test_parse_input(concat_abqc, stream14.as_slice());
 }

@@ -212,3 +212,26 @@ impl<'a, S: Clone,
 
     }
 }
+
+
+#[deriving(Clone)]
+pub struct OptionalParser<P> {
+    p: P,
+}
+
+impl<P> OptionalParser<P> {
+    pub fn new(p: P) -> OptionalParser<P> {
+        OptionalParser { p: p }
+    }
+}
+
+
+impl<'a, S: Hash + Eq,
+         I: ResultIter<Vec<S>, &'a [S]>,
+         P: SimpleParser<'a, S, I> + Clone> Parser<&'a [S], Vec<S>, AltResultIter<StdResultIter<'a, S>, I>> for OptionalParser<P> {
+    fn parse(&self, state: &'a [S]) -> AltResultIter<StdResultIter<'a, S>, I> {
+        AltParser::new(NilParser, self.p.clone()).parse(state)
+    }
+}
+
+
