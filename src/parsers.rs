@@ -235,3 +235,21 @@ impl<'a, S: Hash + Eq,
 }
 
 
+#[deriving(Clone)]
+pub struct StarParser<P> {
+    p: P,
+}
+
+impl<P> StarParser<P> {
+    pub fn new(p: P) -> StarParser<P> {
+        StarParser { p: p }
+    }
+}
+/*
+
+impl<'a, S> Parser<&'a [S], Vec<S>, StarResultIter> for StarParser<P> {
+    fn parse(&self, state: &'a [S]) -> StarResultIter {
+
+    }
+}
+*/
