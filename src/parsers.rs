@@ -76,9 +76,9 @@ for ConcatResultIter<S, I, J, P> {
         if self.iter2.is_some() {
             let next_iter2 = self.next_iter2();
             match next_iter2 {
-                Some(x) => {
-                    // TODO
-                    return None;
+                Some((parsed, rem)) => {
+                    return Some( (append_move( self.init_parsed.clone(), parsed),
+                           rem));
                 },
                 None => {},
             }
