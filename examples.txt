@@ -8,3 +8,4 @@ Ideas for examples:
  - IMAP parser
  - Markdown
  - docopt
+ - toml
