@@ -49,6 +49,29 @@ impl<T, S> Parser<S, Vec<T>> for NilParser {
     }
 }
 
+pub struct SymParser<A> {
+    sym: A,
+}
+
+// this is where having the input be an iterator would be very nice.
+impl<'a, A: Eq + Clone> Parser<&'a [A], Vec<A>> for SymParser<A> {
+    fn parse(&self, state: &'a [A]) -> Results<Vec<A>, &'a [A]> {
+        match state.get(0) {
+            None => ResultEmpty(EmptyIter),
+            Some(sym) => {
+                if *sym == self.sym {
+                    let res = (vec!(self.sym.clone()), state.tailn(1));
+                    let vec = vec!(res);
+                    ResultItems( vec.move_iter() )
+                } else {
+                    ResultEmpty(EmptyIter)
+                }
+            },
+        }
+
+    }
+}
+
 
 pub struct AltParser<P, Q> {
     p1: P,
@@ -128,56 +151,6 @@ for ConcatResultIter<S, I, J, P> {
 
 
 /****************************/
-
-
-pub struct NilParser;
-
-impl NilParser {
-    pub fn new() -> NilParser {
-        NilParser
-    }
-}
-
-impl<'a, S: Hash + Eq> 
-Parser<&'a [S], Vec<S>, StdResultIter<'a, S>> 
-for NilParser {
-    fn parse<'a>(&self, state: &'a [S]) -> StdResultIter<'a, S> {
-        let mut hm = HashMap::new();
-        hm.insert(vec!(), state);
-        hm.move_iter()
-    }
-}
-
-
-#[deriving(Clone)]
-pub struct SymParser<S> {
-    sym: S,
-}
-
-impl<S> SymParser<S> {
-    pub fn new(c: S) -> SymParser<S> {
-        SymParser { sym: c }
-    }
-}
-
-impl<'a, S: Hash + Eq + Clone> Parser<&'a [S], Vec<S>, StdResultIter<'a, S>> 
-for SymParser<S> {
-    fn parse(&self, state: &'a [S]) -> StdResultIter<'a, S> {
-        match state.get(0) {
-            None => HashMap::new().move_iter(),
-            Some(sym) => {
-                if *sym == self.sym {
-                    let mut hm = HashMap::new();
-                    hm.insert(vec!( self.sym.clone() ), state.tailn(1));
-                    hm.move_iter()
-                } else {
-                    HashMap::new().move_iter()
-                }
-            },
-        }
-
-    }
-}
 
 
 #[deriving(Clone)]

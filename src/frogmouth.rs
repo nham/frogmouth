@@ -2,7 +2,7 @@ pub use std::collections::hashmap::{HashMap, MoveEntries};
 pub use std::vec::MoveItems;
 use std::fmt::Show;
 
-use parsers::{NilParser, AltParser, alt};
+use parsers::{NilParser, SymParser, AltParser, alt};
 
 mod parsers;
 
