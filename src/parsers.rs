@@ -1,4 +1,4 @@
-use super::{HashMap, MoveEntries, Parser};
+use super::{HashMap, MoveItems};
 use std::hash::Hash;
 use std::iter::Chain;
 
@@ -7,47 +7,68 @@ fn append_move<T>(mut v1: Vec<T>, v2: Vec<T>) -> Vec<T> {
     v1
 }
 
-// Parser where the input stream type is a slice of S's, and the 
-// "parsed" representation is a vector of S's
-trait SimpleParser<'a, S, I>: Parser<&'a [S], Vec<S>, I> {}
 
-impl<'a, S, I, P: Parser<&'a [S], Vec<S>, I>> 
-    SimpleParser<'a, S, I> for P {}
+// IDEA: Use Skip iterator and turn the parse() input into an iterator of
+// some sort. Maybe not fast enough?
 
-type StdResultIter<'a, S> = MoveEntries<Vec<S>, &'a [S]>;
-
-
-// Essentially a dummy trait to unify the different varieties
-// of iterators that I use
-trait ResultIter<A,B>: Iterator<(A,B)> {}
-
-impl<'a, S> ResultIter<Vec<S>, &'a [S]> for StdResultIter<'a, S> {}
-impl<'a, S> ResultIter<Vec<S>, &'a [S]> 
-for AltResultIter<StdResultIter<'a, S>, StdResultIter<'a, S>> {}
-
-impl<'a, S: Clone, 
-         I: ResultIter<Vec<S>, &'a [S]>, 
-         J: ResultIter<Vec<S>, &'a [S]>,
-         P: SimpleParser<'a, S, J>> 
-    ResultIter<Vec<S>, &'a [S]> for ConcatResultIter<S, I, J, P> {}
-
-
-struct AltResultIter<I, J> {
-    chain: Chain<I, J>,
+// S is a stream of input symbols, T is some type representing parsed input
+trait Parser<S, T> {
+    fn parse(&self, state: S) -> Results<T, S>;
 }
 
-impl<'a, S, 
-         I: ResultIter<Vec<S>, &'a [S]>, 
-         J: ResultIter<Vec<S>, &'a [S]>>
-Iterator<(Vec<S>, &'a [S])>
-for AltResultIter<I, J> {
-    fn next(&mut self) -> Option<(Vec<S>, &'a [S])> {
-        self.chain.next()
+struct EmptyIter;
+impl<T> Iterator<T> for EmptyIter {
+    fn next(&mut self) -> Option<T> { None }
+}
+
+enum Results<T, S> {
+    ResultEmpty(EmptyIter),
+    ResultItems(MoveItems<(T, S)>),
+    ResultChain(Box<Chain<Results<T, S>, Results<T, S>>>),
+}
+
+impl<T, S> Iterator<(T, S)> for Results<T, S> {
+    fn next(&mut self) -> Option<(T, S)> {
+        match *self {
+            ResultEmpty(ref mut it) => it.next(),
+            ResultItems(ref mut it) => it.next(),
+            ResultChain(ref mut it) => it.next(),
+        }
     }
 }
 
 
 
+pub struct NilParser;
+
+impl<T, S> Parser<S, Vec<T>> for NilParser {
+    fn parse(&self, state: S) -> Results<Vec<T>, S> {
+        let res = (vec!(), state);
+        let vec = vec!(res);
+        ResultItems( vec.move_iter() )
+    }
+}
+
+
+pub struct AltParser<P, Q> {
+    p1: P,
+    p2: Q,
+}
+
+impl<S: Copy, T, P: Parser<S, T>, Q: Parser<S, T>> 
+Parser<S, T> for AltParser<P, Q> {
+    fn parse(&self, state: S) -> Results<T, S> {
+        ResultChain(box self.p1.parse(state).chain(self.p2.parse(state)))
+    }
+}
+
+
+pub fn alt<S, T, P: Parser<S, T>, Q: Parser<S, T>>(p1: P, p2: Q) -> AltParser<P, Q> {
+    AltParser { p1: p1, p2: p2 }
+}
+
+
+/*
 // The idea is that I is an iterator and P is a parser.
 struct ConcatResultIter<S, I, J, P> {
     iter: I,
@@ -117,7 +138,8 @@ impl NilParser {
     }
 }
 
-impl<'a, S: Hash + Eq> Parser<&'a [S], Vec<S>, StdResultIter<'a, S>> 
+impl<'a, S: Hash + Eq> 
+Parser<&'a [S], Vec<S>, StdResultIter<'a, S>> 
 for NilParser {
     fn parse<'a>(&self, state: &'a [S]) -> StdResultIter<'a, S> {
         let mut hm = HashMap::new();
@@ -154,31 +176,6 @@ for SymParser<S> {
             },
         }
 
-    }
-}
-
-
-#[deriving(Clone)]
-pub struct AltParser<P, Q> {
-    p1: P,
-    p2: Q,
-}
-
-impl<P, Q> AltParser<P, Q> {
-    pub fn new(p1: P, p2: Q) -> AltParser<P, Q> {
-        AltParser { p1: p1, p2: p2 }
-    }
-}
-
-
-impl<'a, S, 
-         I: ResultIter<Vec<S>, &'a [S]>,
-         J: ResultIter<Vec<S>, &'a [S]>,
-         P: SimpleParser<'a, S, I>,
-         Q: SimpleParser<'a, S, J>> 
-    Parser<&'a [S], Vec<S>, AltResultIter<I, J>> for AltParser<P, Q> {
-    fn parse(&self, state: &'a [S]) -> AltResultIter<I, J> {
-        AltResultIter { chain: self.p1.parse(state).chain(self.p2.parse(state)) }
     }
 }
 
@@ -234,22 +231,4 @@ impl<'a, S: Hash + Eq,
     }
 }
 
-
-#[deriving(Clone)]
-pub struct StarParser<P> {
-    p: P,
-}
-
-impl<P> StarParser<P> {
-    pub fn new(p: P) -> StarParser<P> {
-        StarParser { p: p }
-    }
-}
-/*
-
-impl<'a, S> Parser<&'a [S], Vec<S>, StarResultIter> for StarParser<P> {
-    fn parse(&self, state: &'a [S]) -> StarResultIter {
-
-    }
-}
 */

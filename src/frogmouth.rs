@@ -1,16 +1,12 @@
 pub use std::collections::hashmap::{HashMap, MoveEntries};
+pub use std::vec::MoveItems;
 use std::fmt::Show;
 
-use parsers::{SymParser, AltParser, ConcatParser, OptionalParser};
+use parsers::{NilParser, AltParser, alt};
 
 mod parsers;
 
-// S is a stream of input symbols, T is some type representing parsed input
-// I is an iterator that represents the possible matches
-trait Parser<S, T, I: Iterator<(T, S)>> {
-    fn parse(&self, state: S) -> I;
-}
-
+/*****************/
 
 fn print_iter<T: Show, I: Iterator<T>>(mut entries: I) {
     print!("[");
@@ -20,15 +16,18 @@ fn print_iter<T: Show, I: Iterator<T>>(mut entries: I) {
     print!("]");
 }
 
+/*
 fn test_parse_input<'a, S: Show, I: Iterator<(Vec<S>, &'a [S])>, P: Parser<&'a [S], Vec<S>, I>>(p: P, inp: &'a [S]) {
     let res = p.parse(inp);
     print!("testing with input {} -- ", inp);
     print_iter(res);
     println!("");
 }
+*/
 
 
 fn main() {
+    /*
     let ap = SymParser::new('a');
     let bp = SymParser::new('b');
     let cp = SymParser::new('c');
@@ -120,4 +119,5 @@ fn main() {
     let stream14 = vec!('a', 'c', 'd', 'e');
     test_parse_input(concat_a_opt_b_c, stream12.as_slice());
     test_parse_input(concat_a_opt_b_c, stream14.as_slice());
+    */
 }
