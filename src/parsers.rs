@@ -60,12 +60,29 @@ impl<'a, A: Eq + Clone> Parser<&'a [A], Vec<A>> for SymParser<A> {
             None => ResultEmpty(EmptyIter),
             Some(sym) => {
                 if *sym == self.sym {
-                    let res = (vec!(self.sym.clone()), state.tailn(1));
+                    let res = (vec!(sym.clone()), state.tailn(1));
                     let vec = vec!(res);
                     ResultItems( vec.move_iter() )
                 } else {
                     ResultEmpty(EmptyIter)
                 }
+            },
+        }
+
+    }
+}
+
+
+pub struct DotParser;
+
+impl<'a, A: Clone> Parser<&'a [A], Vec<A>> for DotParser {
+    fn parse(&self, state: &'a [A]) -> Results<Vec<A>, &'a [A]> {
+        match state.get(0) {
+            None => ResultEmpty(EmptyIter),
+            Some(sym) => {
+                let res = (vec!(sym.clone()), state.tailn(1));
+                let vec = vec!(res);
+                ResultItems( vec.move_iter() )
             },
         }
 
