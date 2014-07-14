@@ -13,7 +13,7 @@ fn append_move<T>(mut v1: Vec<T>, v2: Vec<T>) -> Vec<T> {
 
 // S is a stream of input symbols, T is some type representing parsed input
 pub trait Parser<S, T> {
-    fn parse(&self, state: S) -> Results<T, S>;
+    fn parse<P>(&self, state: S) -> Results<T, S, P>;
 }
 
 struct EmptyIter;
@@ -21,10 +21,11 @@ impl<T> Iterator<T> for EmptyIter {
     fn next(&mut self) -> Option<T> { None }
 }
 
-enum Results<T, S> {
+enum Results<T, S, P> {
     ResultEmpty(EmptyIter),
     ResultItems(MoveItems<(T, S)>),
     ResultChain(Box<Chain<Results<T, S>, Results<T, S>>>),
+    ResultConcat(ConcatResults<S, T, P>),
 }
 
 impl<T, S> Iterator<(T, S)> for Results<T, S> {
@@ -33,6 +34,7 @@ impl<T, S> Iterator<(T, S)> for Results<T, S> {
             ResultEmpty(ref mut it) => it.next(),
             ResultItems(ref mut it) => it.next(),
             ResultChain(ref mut it) => it.next(),
+            ResultConcat(ref mut it) => it.next(),
         }
     }
 }
@@ -108,6 +110,64 @@ Parser<S, T> for AltParser<P, Q> {
     }
 }
 
+struct CatParser<P, Q> {
+    p1: P,
+    p2: Q,
+}
+
+impl<S: Copy, T, P: Parser<S, T>, Q: Parser<S, T>> 
+Parser<S, T> for CatParser<P, Q> {
+    fn parse(&self, state: S) -> Results<T, S> {
+        ResultConcat()
+    }
+}
+
+
+struct PrependResults<T, I> {
+    val: T,
+    it: I,
+}
+
+impl<S, T: Clone, I: Iterator<(Vec<T>, S)>> 
+Iterator<(Vec<T>, S)> for PrependResults<Vec<T>, I> {
+    fn next(&mut self) -> Option<(Vec<T>, S)> {
+        match self.it.next() {
+            None => None,
+            Some((a, b)) => Some( (append_move(self.val.clone(), a), b) )
+        }
+    }
+}
+
+// The idea is that I is an iterator and P is a parser.
+struct ConcatResults<S, T, P> {
+    iter: Results<T, S>, // results from first parse
+    p: P,
+    iter2: Option<PrependResults<T, S>>, // the iterator from second parse
+}
+
+impl<S, T, P: Parser<S, Vec<T>>> Iterator<(Vec<T>, S)> for ConcatResults<S, Vec<T>, P> {
+    fn next(&mut self) -> Option<(T, S)> {
+        let mut n: Option<(Vec<T>, S)>;
+        loop {
+            if self.iter2.is_none() {
+                match self.iter.next() {
+                    None => return None,
+                    Some((parsed, rem)) => {
+                        self.iter2 = PrependResults { val: parsed, it: self.p.parse(rem) };
+                    }
+                }
+            }
+
+            n = self.iter2.next();
+            if n.is_some() {
+                break;
+            }
+        }
+
+        n
+    }
+}
+
 
 // Main public functions
 
@@ -127,16 +187,11 @@ pub fn nil() -> NilParser {
     NilParser
 }
 
-
-/*
-// The idea is that I is an iterator and P is a parser.
-struct ConcatResultIter<S, I, J, P> {
-    iter: I,
-    p: P,
-    init_parsed: Vec<S>, // the parsed vector after initial parse
-    iter2: Option<J>, // the iterator from second parse
+pub fn cat<S, T, P: Parser<S, T>, Q: Parser<S, T>>(p1: P, p2: Q) -> CatParser<P, Q> {
+    CatParser { p1: p1, p2: p2 }
 }
 
+/*
 impl<T, S, I, J: Iterator<T>, P> ConcatResultIter<S, I, J, P> {
     fn next_iter2(&mut self) -> Option<T> {
         match self.iter2 {
@@ -217,27 +272,6 @@ impl<'a, S: Clone,
         let mut it = self.p1.parse(state);
         ConcatResultIter { iter: it, p: self.p2.clone(), init_parsed: vec!(), iter2: None }
 
-    }
-}
-
-
-#[deriving(Clone)]
-pub struct OptionalParser<P> {
-    p: P,
-}
-
-impl<P> OptionalParser<P> {
-    pub fn new(p: P) -> OptionalParser<P> {
-        OptionalParser { p: p }
-    }
-}
-
-
-impl<'a, S: Hash + Eq,
-         I: ResultIter<Vec<S>, &'a [S]>,
-         P: SimpleParser<'a, S, I> + Clone> Parser<&'a [S], Vec<S>, AltResultIter<StdResultIter<'a, S>, I>> for OptionalParser<P> {
-    fn parse(&self, state: &'a [S]) -> AltResultIter<StdResultIter<'a, S>, I> {
-        AltParser::new(NilParser, self.p.clone()).parse(state)
     }
 }
 
