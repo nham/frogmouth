@@ -2,7 +2,7 @@ pub use std::collections::hashmap::{HashMap, MoveEntries};
 pub use std::vec::MoveItems;
 use std::fmt::Show;
 
-use parsers::{NilParser, SymParser, AltParser, alt};
+use parsers::{Parser, SymParser, nil, dot, alt, opt};
 
 mod parsers;
 
@@ -16,27 +16,26 @@ fn print_iter<T: Show, I: Iterator<T>>(mut entries: I) {
     print!("]");
 }
 
-/*
-fn test_parse_input<'a, S: Show, I: Iterator<(Vec<S>, &'a [S])>, P: Parser<&'a [S], Vec<S>, I>>(p: P, inp: &'a [S]) {
+fn test_parse_input<'a, S: Show, P: Parser<&'a [S], Vec<S>>>(p: P, inp: &'a [S]) {
     let res = p.parse(inp);
     print!("testing with input {} -- ", inp);
     print_iter(res);
     println!("");
 }
-*/
 
 
 fn main() {
-    /*
     let ap = SymParser::new('a');
     let bp = SymParser::new('b');
     let cp = SymParser::new('c');
     let dp = SymParser::new('d');
 
-    let alt_ab = AltParser::new(ap, bp);
-    let alt_cd = AltParser::new(cp, dp);
+    let alt_ab = alt(ap, bp);
+    let alt_cd = alt(cp, dp);
 
-    let opt_b = OptionalParser::new(bp);
+    let opt_b = opt(bp);
+
+    let dot = dot();
 
 
     let stream1 = vec!('a', 'b', 'c', 'd');
@@ -61,6 +60,12 @@ fn main() {
     test_parse_input(opt_b, stream1.as_slice());
     test_parse_input(opt_b, stream2.as_slice());
 
+    println!("testing dot: ");
+    test_parse_input(dot, stream1.as_slice());
+    test_parse_input(dot, stream2.as_slice());
+    test_parse_input(dot, vec!('c', 'd', 'e').as_slice());
+
+    /*
     println!("testing a ++ opt_b: ");
     let concat_a_opt_b = ConcatParser::new(ap, opt_b);
     test_parse_input(concat_a_opt_b, stream1.as_slice());

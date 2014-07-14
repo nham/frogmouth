@@ -12,7 +12,7 @@ fn append_move<T>(mut v1: Vec<T>, v2: Vec<T>) -> Vec<T> {
 // some sort. Maybe not fast enough?
 
 // S is a stream of input symbols, T is some type representing parsed input
-trait Parser<S, T> {
+pub trait Parser<S, T> {
     fn parse(&self, state: S) -> Results<T, S>;
 }
 
@@ -39,7 +39,7 @@ impl<T, S> Iterator<(T, S)> for Results<T, S> {
 
 
 
-pub struct NilParser;
+struct NilParser;
 
 impl<T, S> Parser<S, Vec<T>> for NilParser {
     fn parse(&self, state: S) -> Results<Vec<T>, S> {
@@ -51,6 +51,12 @@ impl<T, S> Parser<S, Vec<T>> for NilParser {
 
 pub struct SymParser<A> {
     sym: A,
+}
+
+impl<A> SymParser<A> {
+    pub fn new(x: A) -> SymParser<A> {
+        SymParser { sym: x }
+    }
 }
 
 // this is where having the input be an iterator would be very nice.
@@ -73,7 +79,7 @@ impl<'a, A: Eq + Clone> Parser<&'a [A], Vec<A>> for SymParser<A> {
 }
 
 
-pub struct DotParser;
+struct DotParser;
 
 impl<'a, A: Clone> Parser<&'a [A], Vec<A>> for DotParser {
     fn parse(&self, state: &'a [A]) -> Results<Vec<A>, &'a [A]> {
@@ -90,7 +96,7 @@ impl<'a, A: Clone> Parser<&'a [A], Vec<A>> for DotParser {
 }
 
 
-pub struct AltParser<P, Q> {
+struct AltParser<P, Q> {
     p1: P,
     p2: Q,
 }
@@ -103,8 +109,22 @@ Parser<S, T> for AltParser<P, Q> {
 }
 
 
+// Main public functions
+
+pub fn opt<S, T, P: Parser<S, T>>(p: P) -> AltParser<NilParser, P> {
+    AltParser { p1: NilParser, p2: p }
+}
+
 pub fn alt<S, T, P: Parser<S, T>, Q: Parser<S, T>>(p1: P, p2: Q) -> AltParser<P, Q> {
     AltParser { p1: p1, p2: p2 }
+}
+
+pub fn dot() -> DotParser {
+    DotParser
+}
+
+pub fn nil() -> NilParser {
+    NilParser
 }
 
 
