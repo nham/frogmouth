@@ -1,6 +1,6 @@
 use super::{HashMap, MoveItems};
 use std::hash::Hash;
-use std::iter::Chain;
+use std::iter::{Chain, FlatMap};
 
 fn append_move<T>(mut v1: Vec<T>, v2: Vec<T>) -> Vec<T> {
     v1.push_all_move(v2);
@@ -12,8 +12,8 @@ fn append_move<T>(mut v1: Vec<T>, v2: Vec<T>) -> Vec<T> {
 // some sort. Maybe not fast enough?
 
 // S is a stream of input symbols, T is some type representing parsed input
-pub trait Parser<S, T> {
-    fn parse<P>(&self, state: S) -> Results<T, S, P>;
+pub trait Parser<'a, S, T> {
+    fn parse(&self, state: S) -> Results<'a, T, S>;
 }
 
 struct EmptyIter;
@@ -21,20 +21,20 @@ impl<T> Iterator<T> for EmptyIter {
     fn next(&mut self) -> Option<T> { None }
 }
 
-enum Results<T, S, P> {
+enum Results<'a, T, S> {
     ResultEmpty(EmptyIter),
     ResultItems(MoveItems<(T, S)>),
-    ResultChain(Box<Chain<Results<T, S>, Results<T, S>>>),
-    ResultConcat(ConcatResults<S, T, P>),
+    ResultChain(Box<Chain<Results<'a, T, S>, Results<'a, T, S>>>),
+    ResultFlatMap(Box<FlatMap<'a, (T, S), Results<'a, T, S>, Results<'a, T, S>>>),
 }
 
-impl<T, S> Iterator<(T, S)> for Results<T, S> {
+impl<'a, T, S> Iterator<(T, S)> for Results<'a, T, S> {
     fn next(&mut self) -> Option<(T, S)> {
         match *self {
             ResultEmpty(ref mut it) => it.next(),
             ResultItems(ref mut it) => it.next(),
             ResultChain(ref mut it) => it.next(),
-            ResultConcat(ref mut it) => it.next(),
+            ResultFlatMap(ref mut it) => it.next(),
         }
     }
 }
@@ -43,7 +43,7 @@ impl<T, S> Iterator<(T, S)> for Results<T, S> {
 
 struct NilParser;
 
-impl<T, S> Parser<S, Vec<T>> for NilParser {
+impl<'a, T, S> Parser<'a, S, Vec<T>> for NilParser {
     fn parse(&self, state: S) -> Results<Vec<T>, S> {
         let res = (vec!(), state);
         let vec = vec!(res);
@@ -62,8 +62,8 @@ impl<A> SymParser<A> {
 }
 
 // this is where having the input be an iterator would be very nice.
-impl<'a, A: Eq + Clone> Parser<&'a [A], Vec<A>> for SymParser<A> {
-    fn parse(&self, state: &'a [A]) -> Results<Vec<A>, &'a [A]> {
+impl<'a, 'b, A: Eq + Clone> Parser<'b, &'a [A], Vec<A>> for SymParser<A> {
+    fn parse(&self, state: &'a [A]) -> Results<'b, Vec<A>, &'a [A]> {
         match state.get(0) {
             None => ResultEmpty(EmptyIter),
             Some(sym) => {
@@ -83,8 +83,8 @@ impl<'a, A: Eq + Clone> Parser<&'a [A], Vec<A>> for SymParser<A> {
 
 struct DotParser;
 
-impl<'a, A: Clone> Parser<&'a [A], Vec<A>> for DotParser {
-    fn parse(&self, state: &'a [A]) -> Results<Vec<A>, &'a [A]> {
+impl<'a, 'b, A: Clone> Parser<'b, &'a [A], Vec<A>> for DotParser {
+    fn parse(&self, state: &'a [A]) -> Results<'b, Vec<A>, &'a [A]> {
         match state.get(0) {
             None => ResultEmpty(EmptyIter),
             Some(sym) => {
@@ -103,9 +103,9 @@ struct AltParser<P, Q> {
     p2: Q,
 }
 
-impl<S: Copy, T, P: Parser<S, T>, Q: Parser<S, T>> 
-Parser<S, T> for AltParser<P, Q> {
-    fn parse(&self, state: S) -> Results<T, S> {
+impl<'a, S: Copy, T, P: Parser<'a, S, T>, Q: Parser<'a, S, T>> 
+Parser<'a, S, T> for AltParser<P, Q> {
+    fn parse(&self, state: S) -> Results<'a, T, S> {
         ResultChain(box self.p1.parse(state).chain(self.p2.parse(state)))
     }
 }
@@ -115,29 +115,14 @@ struct CatParser<P, Q> {
     p2: Q,
 }
 
-impl<S: Copy, T, P: Parser<S, T>, Q: Parser<S, T>> 
-Parser<S, T> for CatParser<P, Q> {
-    fn parse(&self, state: S) -> Results<T, S> {
-        ResultConcat()
+impl<'a, S: Copy, T, P: Parser<'a, S, T>, Q: Parser<'a, S, T>> 
+Parser<'a, S, T> for CatParser<P, Q> {
+    fn parse(&self, state: S) -> Results<'a, T, S> {
+        ResultFlatMap( box self.p1.parse(state).flat_map(|x| self.p2.parse(x.val1())) )
     }
 }
 
-
-struct PrependResults<T, I> {
-    val: T,
-    it: I,
-}
-
-impl<S, T: Clone, I: Iterator<(Vec<T>, S)>> 
-Iterator<(Vec<T>, S)> for PrependResults<Vec<T>, I> {
-    fn next(&mut self) -> Option<(Vec<T>, S)> {
-        match self.it.next() {
-            None => None,
-            Some((a, b)) => Some( (append_move(self.val.clone(), a), b) )
-        }
-    }
-}
-
+/*
 // The idea is that I is an iterator and P is a parser.
 struct ConcatResults<S, T, P> {
     iter: Results<T, S>, // results from first parse
@@ -167,15 +152,16 @@ impl<S, T, P: Parser<S, Vec<T>>> Iterator<(Vec<T>, S)> for ConcatResults<S, Vec<
         n
     }
 }
+*/
 
 
 // Main public functions
 
-pub fn opt<S, T, P: Parser<S, T>>(p: P) -> AltParser<NilParser, P> {
+pub fn opt<'a, S, T, P: Parser<'a, S, T>>(p: P) -> AltParser<NilParser, P> {
     AltParser { p1: NilParser, p2: p }
 }
 
-pub fn alt<S, T, P: Parser<S, T>, Q: Parser<S, T>>(p1: P, p2: Q) -> AltParser<P, Q> {
+pub fn alt<'a, S, T, P: Parser<'a, S, T>, Q: Parser<'a, S, T>>(p1: P, p2: Q) -> AltParser<P, Q> {
     AltParser { p1: p1, p2: p2 }
 }
 
@@ -187,7 +173,7 @@ pub fn nil() -> NilParser {
     NilParser
 }
 
-pub fn cat<S, T, P: Parser<S, T>, Q: Parser<S, T>>(p1: P, p2: Q) -> CatParser<P, Q> {
+pub fn cat<'a, S, T, P: Parser<'a, S, T>, Q: Parser<'a, S, T>>(p1: P, p2: Q) -> CatParser<P, Q> {
     CatParser { p1: p1, p2: p2 }
 }
 

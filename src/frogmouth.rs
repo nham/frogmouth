@@ -16,7 +16,7 @@ fn print_iter<T: Show, I: Iterator<T>>(mut entries: I) {
     print!("]");
 }
 
-fn test_parse_input<'a, S: Show, P: Parser<&'a [S], Vec<S>>>(p: P, inp: &'a [S]) {
+fn test_parse_input<'a, 'b, S: Show, P: Parser<'b, &'a [S], Vec<S>>>(p: P, inp: &'a [S]) {
     let res = p.parse(inp);
     print!("testing with input {} -- ", inp);
     print_iter(res);
