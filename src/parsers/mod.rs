@@ -1,6 +1,9 @@
 use super::{HashMap, MoveItems};
 use std::hash::Hash;
 use std::iter::{Chain, FlatMap};
+use parsers::trait_fm::{TraitFlatMap, IterGen};
+
+mod trait_fm;
 
 fn append_move<T>(mut v1: Vec<T>, v2: Vec<T>) -> Vec<T> {
     v1.push_all_move(v2);
@@ -12,8 +15,8 @@ fn append_move<T>(mut v1: Vec<T>, v2: Vec<T>) -> Vec<T> {
 // some sort. Maybe not fast enough?
 
 // S is a stream of input symbols, T is some type representing parsed input
-pub trait Parser<'a, S, T> {
-    fn parse(&self, state: S) -> Results<'a, T, S>;
+pub trait Parser<S, T> {
+    fn parse(&self, state: S) -> Results<T, S>;
 }
 
 struct EmptyIter;
@@ -21,14 +24,24 @@ impl<T> Iterator<T> for EmptyIter {
     fn next(&mut self) -> Option<T> { None }
 }
 
-enum Results<'a, T, S> {
-    ResultEmpty(EmptyIter),
-    ResultItems(MoveItems<(T, S)>),
-    ResultChain(Box<Chain<Results<'a, T, S>, Results<'a, T, S>>>),
-    ResultFlatMap(Box<FlatMap<'a, (T, S), Results<'a, T, S>, Results<'a, T, S>>>),
+struct ConcatGen<P> {
+    p: P,
 }
 
-impl<'a, T, S> Iterator<(T, S)> for Results<'a, T, S> {
+impl<S, T, P: Parser<S, T>> IterGen<S, (T, S), Results<T, S>> for ConcatGen<P> {
+    fn gen(&mut self, x: S) -> Results<T, S> {
+        self.p.parse(x)
+    }
+}
+
+enum Results<T, S> {
+    ResultEmpty(EmptyIter),
+    ResultItems(MoveItems<(T, S)>),
+    ResultChain(Box<Chain<Results<T, S>, Results<T, S>>>),
+    ResultFlatMap(Box<TraitFlatMap<Results<T, S>, Results<T, S>, DooDoo>>),
+}
+
+impl<T, S> Iterator<(T, S)> for Results<T, S> {
     fn next(&mut self) -> Option<(T, S)> {
         match *self {
             ResultEmpty(ref mut it) => it.next(),
@@ -43,7 +56,7 @@ impl<'a, T, S> Iterator<(T, S)> for Results<'a, T, S> {
 
 struct NilParser;
 
-impl<'a, T, S> Parser<'a, S, Vec<T>> for NilParser {
+impl<T, S> Parser<S, Vec<T>> for NilParser {
     fn parse(&self, state: S) -> Results<Vec<T>, S> {
         let res = (vec!(), state);
         let vec = vec!(res);
@@ -62,8 +75,8 @@ impl<A> SymParser<A> {
 }
 
 // this is where having the input be an iterator would be very nice.
-impl<'a, 'b, A: Eq + Clone> Parser<'b, &'a [A], Vec<A>> for SymParser<A> {
-    fn parse(&self, state: &'a [A]) -> Results<'b, Vec<A>, &'a [A]> {
+impl<'a, A: Eq + Clone> Parser<&'a [A], Vec<A>> for SymParser<A> {
+    fn parse(&self, state: &'a [A]) -> Results<Vec<A>, &'a [A]> {
         match state.get(0) {
             None => ResultEmpty(EmptyIter),
             Some(sym) => {
@@ -83,8 +96,8 @@ impl<'a, 'b, A: Eq + Clone> Parser<'b, &'a [A], Vec<A>> for SymParser<A> {
 
 struct DotParser;
 
-impl<'a, 'b, A: Clone> Parser<'b, &'a [A], Vec<A>> for DotParser {
-    fn parse(&self, state: &'a [A]) -> Results<'b, Vec<A>, &'a [A]> {
+impl<'a, A: Clone> Parser<&'a [A], Vec<A>> for DotParser {
+    fn parse(&self, state: &'a [A]) -> Results<Vec<A>, &'a [A]> {
         match state.get(0) {
             None => ResultEmpty(EmptyIter),
             Some(sym) => {
@@ -103,9 +116,9 @@ struct AltParser<P, Q> {
     p2: Q,
 }
 
-impl<'a, S: Copy, T, P: Parser<'a, S, T>, Q: Parser<'a, S, T>> 
-Parser<'a, S, T> for AltParser<P, Q> {
-    fn parse(&self, state: S) -> Results<'a, T, S> {
+impl<S: Copy, T, P: Parser<S, T>, Q: Parser<S, T>> 
+Parser<S, T> for AltParser<P, Q> {
+    fn parse(&self, state: S) -> Results<T, S> {
         ResultChain(box self.p1.parse(state).chain(self.p2.parse(state)))
     }
 }
@@ -115,9 +128,9 @@ struct CatParser<P, Q> {
     p2: Q,
 }
 
-impl<'a, S: Copy, T, P: Parser<'a, S, T>, Q: Parser<'a, S, T>> 
-Parser<'a, S, T> for CatParser<P, Q> {
-    fn parse(&self, state: S) -> Results<'a, T, S> {
+impl<S: Copy, T, P: Parser<S, T>, Q: Parser<S, T>> 
+Parser<S, T> for CatParser<P, Q> {
+    fn parse(&self, state: S) -> Results<T, S> {
         ResultFlatMap( box self.p1.parse(state).flat_map(|x| self.p2.parse(x.val1())) )
     }
 }
@@ -225,40 +238,4 @@ for ConcatResultIter<S, I, J, P> {
         }
     }
 }
-
-
-
-/****************************/
-
-
-#[deriving(Clone)]
-pub struct ConcatParser<P, Q> {
-    p1: P,
-    p2: Q,
-}
-
-impl<P, Q> ConcatParser<P, Q> {
-    pub fn new(p1: P, p2: Q) -> ConcatParser<P, Q> {
-        ConcatParser { p1: p1, p2: p2 }
-    }
-}
-
-
-// This is a bad because we require Q to implement Clone. I think ideally
-// ConcatResultIter should only hold a reference to a Parser. However, that
-// means it has to take a lifetime parameter, so far I've been unable to make
-// the borrow checker agree with what I've written.
-impl<'a, S: Clone, 
-         I: ResultIter<Vec<S>, &'a [S]>,
-         J: ResultIter<Vec<S>, &'a [S]>,
-         P: Parser<&'a [S], Vec<S>, I>,
-         Q: Parser<&'a [S], Vec<S>, J> + Clone> 
-    Parser<&'a [S], Vec<S>, ConcatResultIter<S, I, J, Q>> for ConcatParser<P, Q> {
-    fn parse(&self, state: &'a [S]) -> ConcatResultIter<S, I, J, Q> {
-        let mut it = self.p1.parse(state);
-        ConcatResultIter { iter: it, p: self.p2.clone(), init_parsed: vec!(), iter2: None }
-
-    }
-}
-
 */

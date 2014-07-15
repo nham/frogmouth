@@ -1,5 +1,5 @@
 // My attempt at FlatMap, but with using a trait method rather than closures
-struct TraitFlatMap<I, J, G> {
+pub struct TraitFlatMap<I, J, G> {
     iter: I,
     g: G,
     iter2: Option<J>,
@@ -33,7 +33,7 @@ Iterator<B> for TraitFlatMap<I, J, G> {
     }
 }
 
-trait IterGen<A, B, T: Iterator<B>> {
+pub trait IterGen<A, B, T: Iterator<B>> {
     fn gen(&mut self, x: A) -> T;
 }
 
@@ -54,7 +54,6 @@ mod test {
                 self.s += 1;
                 count(tmp, 1).take(x)
             }
-
         }
 
         let mut foo = Foo { s: -7 };
@@ -71,8 +70,3 @@ mod test {
         }
     }
 }
-
-fn main() {
-
-}
-
